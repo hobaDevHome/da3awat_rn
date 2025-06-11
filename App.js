@@ -3,6 +3,7 @@ import { Platform, View, Text, Button, StyleSheet, Alert } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import { Asset } from "expo-asset";
 import { Linking } from "react-native";
+import * as FileSystem from "expo-file-system";
 
 export default function App() {
   const [selectedFile, setSelectedFile] = useState("");
@@ -10,11 +11,7 @@ export default function App() {
   const [index, setIndex] = useState(0);
   const [status, setStatus] = useState("");
   const [blueIndex, setBlueIndex] = useState(0);
-
-  const fileMap = {
-    "am.csv": require("./assets/am.csv"),
-    "pm.csv": require("./assets/pm.csv"),
-  };
+  const [testIndex, setTestIndex] = useState(0);
 
   const blueskyInvites = [
     "ربنا يسعدك ويروق بالك ويطمنك على ولادك يا دودو @rosede.bsky.social",
@@ -22,17 +19,29 @@ export default function App() {
     "ربنا يوفقك ويكتبلك الخير ويرزقك مليون دولار وتسافري انتي وجوزك وولادك على خير قريب يا بيرو @abeergaber.bsky.social",
   ];
 
+  const testTwitterArray = ["test 1", "test 2", "test 3"];
+
   const loadCSV = async (filename) => {
     setStatus("...جارٍ التحميل");
     setInvites([]);
     setIndex(0);
 
     try {
-      const asset = Asset.fromModule(fileMap[filename]);
-      await asset.downloadAsync(); // مهم عشان يشتغل على الموبايل
-      const response = await fetch(asset.uri);
-      const text = await response.text();
+      // استخدمي روابط raw من GitHub
+      const fileURLs = {
+        "am.csv":
+          "https://raw.githubusercontent.com/hobaDevHome/da3awat_rn/refs/heads/master/assets/am.csv",
+        "pm.csv":
+          "https://raw.githubusercontent.com/hobaDevHome/da3awat_rn/refs/heads/master/assets/pm.csv",
+      };
 
+      const fileURL = fileURLs[filename];
+      if (!fileURL) throw new Error("❌ ملف غير معروف");
+
+      const response = await fetch(fileURL);
+      if (!response.ok) throw new Error("❌ فشل تحميل الملف");
+
+      const text = await response.text();
       const lines = text.split(/\r?\n/).filter((line) => line.trim() !== "");
       setInvites(lines);
       setStatus(`📄 تم تحميل ${lines.length} دعوة من "${filename}"`);
@@ -81,6 +90,24 @@ export default function App() {
     }
   };
 
+  const sendTestTwitter = async () => {
+    if (testIndex < testTwitterArray.length) {
+      const text = encodeURIComponent(testTwitterArray[testIndex]);
+      const tweetURL = `https://twitter.com/intent/tweet?text=${text}`;
+      if (Platform.OS === "web") {
+        window.open(tweetURL, "_blank");
+      } else {
+        Linking.openURL(tweetURL);
+      }
+      setTestIndex(testIndex + 1);
+      setStatus(
+        `✅ تم إرسال الدعوة رقم ${testIndex + 1} من ${testTwitterArray.length}`
+      );
+    } else {
+      Alert.alert("🎉 خلصنا كل الدعوات!");
+    }
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.header}>📂 اختر الملف: AM أو PM</Text>
@@ -110,6 +137,15 @@ export default function App() {
           title="إرسال دعوة بلوسكاي"
           onPress={sendBluesky}
           disabled={blueIndex >= blueskyInvites.length}
+          color="#5A78F0"
+        />
+      </View>
+
+      <View style={styles.buttonWrapper}>
+        <Button
+          title="Test twitter"
+          onPress={sendTestTwitter}
+          disabled={testIndex >= testTwitterArray.length}
           color="#5A78F0"
         />
       </View>
